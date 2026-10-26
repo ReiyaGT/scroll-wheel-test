@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mouse Scroll Wheel Tester & Glitch Detector</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Custom scrollbar for log area */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(71, 85, 105, 1);
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col overflow-x-hidden selection:bg-cyan-500 selection:text-slate-950">
+
+    <!-- Top Navigation Header -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-cyan-400">
+                    <i data-lucide="mouse-pointer-2" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-white flex items-center gap-2">
+                        Scroll Wheel Glitch Tester
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">v2.0</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">Inspired by Fractal Glider's Mouse Scroll Encoder Test</p>
+                </div>
+            </div>
+
+            <!-- Quick Action Buttons Header -->
+            <div class="flex items-center gap-2">
+                <button id="resetStatsBtn" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                    Reset Stats
+                </button>
+                <button id="clearCanvasBtn" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white transition shadow-lg shadow-cyan-600/20">
+                    <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
+                    Clear Plot
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+        <!-- Left 3 Columns: Canvas & Telemetry -->
+        <div class="lg:col-span-3 flex flex-col gap-6">
+
+            <!-- Stats Header Cards Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <!-- Total Events -->
+                <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Steps</span>
+                    <div class="flex items-baseline justify-between mt-2">
+                        <span id="totalStepsCount" class="text-2xl font-bold font-mono text-white">0</span>
+                        <i data-lucide="activity" class="w-4 h-4 text-slate-500"></i>
+                    </div>
+                </div>
+
+                <!-- Up Scrolls -->
+                <div class="bg-slate-900/60 border border-emerald-950/40 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute inset-0 bg-emerald-500/5 pointer-events-none"></div>
+                    <span class="text-xs font-medium text-emerald-400 uppercase tracking-wider">Scroll Up</span>
+                    <div class="flex items-baseline justify-between mt-2">
+                        <span id="upCount" class="text-2xl font-bold font-mono text-emerald-400">0</span>
+                        <i data-lucide="arrow-up" class="w-4 h-4 text-emerald-400"></i>
+                    </div>
+                </div>
+
+                <!-- Down Scrolls -->
+                <div class="bg-slate-900/60 border border-indigo-950/40 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute inset-0 bg-indigo-500/5 pointer-events-none"></div>
+                    <span class="text-xs font-medium text-indigo-400 uppercase tracking-wider">Scroll Down</span>
+                    <div class="flex items-baseline justify-between mt-2">
+                        <span id="downCount" class="text-2xl font-bold font-mono text-indigo-400">0</span>
+                        <i data-lucide="arrow-down" class="w-4 h-4 text-indigo-400"></i>
+                    </div>
+                </div>
+
+                <!-- Glitches Detected -->
+                <div id="glitchCard" class="bg-slate-900/60 border border-rose-950/50 rounded-xl p-4 flex flex-col justify-between relative overflow-hidden transition-all duration-300">
+                    <div class="absolute inset-0 bg-rose-500/5 pointer-events-none"></div>
+                    <span class="text-xs font-medium text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                        Glitch Steps
+                        <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-rose-400"></i>
+                    </span>
+                    <div class="flex items-baseline justify-between mt-2">
+                        <span id="glitchCount" class="text-2xl font-bold font-mono text-rose-400">0</span>
+                        <span id="glitchRatio" class="text-xs font-mono text-slate-400">0.0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Waterfall Visualizer Container -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col relative shadow-2xl">
+                <!-- Canvas Control Header -->
+                <div class="px-4 py-3 border-b border-slate-800 bg-slate-950/50 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center gap-2 text-slate-300 font-medium">
+                        <i data-lucide="waves" class="w-4 h-4 text-cyan-400"></i>
+                        <span>Oscilloscope Streamer</span>
+                        <span id="scrollingIndicator" class="hidden px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 animate-pulse">
+                            SCROLLING
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-4">
+                        <!-- Direction Legend -->
+                        <div class="flex items-center gap-3 font-mono">
+                            <span class="flex items-center gap-1 text-emerald-400">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> Up (Green)
+                            </span>
+                            <span class="flex items-center gap-1 text-rose-500">
+                                <span class="w-2.5 h-2.5 rounded-full bg-rose-600 inline-block"></span> Down (Red)
+                            </span>
+                            <span class="flex items-center gap-1 text-amber-400 font-bold">
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block animate-ping"></span> Glitch
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Canvas Viewport -->
+                <div class="relative w-full h-80 sm:h-[420px] bg-slate-950 flex items-center justify-center cursor-crosshair group" id="canvasContainer">
+                    <canvas id="streamerCanvas" class="w-full h-full block"></canvas>
+                    
+                    <!-- Overlay Guide Prompt -->
+                    <div id="canvasOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/70 backdrop-blur-[2px] transition-opacity duration-300 pointer-events-none">
+                        <div class="p-4 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 mb-3 animate-bounce">
+                            <i data-lucide="mouse" class="w-8 h-8"></i>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-200">Scroll anywhere on this page to start testing</p>
+                        <p class="text-xs text-slate-400 mt-1">Scroll up or down to draw the staircase waveform</p>
+                    </div>
+                </div>
+
+                <!-- Footer Bar Info -->
+                <div class="px-4 py-2 border-t border-slate-800 bg-slate-950/40 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                    <span id="canvasDimensions">Width: 0px | X-Pos: 0</span>
+                    <span id="lastDeltaInfo">Last DeltaY: 0</span>
+                </div>
+            </div>
+
+            <!-- Glitch Warning Alert Banner (Hidden by default) -->
+            <div id="glitchBanner" class="hidden border border-rose-500/40 bg-rose-500/10 rounded-xl p-4 flex items-start gap-3 text-rose-200">
+                <i data-lucide="shield-alert" class="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5"></i>
+                <div class="flex-1 text-xs">
+                    <h4 class="font-bold text-rose-300 text-sm">Encoder Reverse Jump (Glitch) Detected!</h4>
+                    <p class="mt-0.5 text-rose-200/80">
+                        While scrolling rapidly in one direction, the mouse sent an erratic event in the opposite direction. 
+                        This is typically caused by a worn or dirty mechanical scroll encoder (switch chatter).
+                    </p>
+                </div>
+                <button id="dismissBanner" class="text-rose-400 hover:text-rose-200">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Right 1 Column: Controls, How-to, & Live Event Logs -->
+        <div class="flex flex-col gap-6">
+
+            <!-- Test Controls Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">
+                <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                    <i data-lucide="sliders" class="w-4 h-4 text-cyan-400"></i>
+                    Visualizer Settings
+                </h3>
+
+                <!-- Step Width Slider -->
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between text-xs font-medium">
+                        <label for="stepWidth" class="text-slate-300">Step Width (Px)</label>
+                        <span id="stepWidthVal" class="text-cyan-400 font-mono">8px</span>
+                    </div>
+                    <input type="range" id="stepWidth" min="2" max="24" value="8" class="w-full accent-cyan-500 bg-slate-800 rounded-lg h-2 cursor-pointer">
+                </div>
+
+                <!-- Step Height / Sensitivity -->
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between text-xs font-medium">
+                        <label for="amplitudeScale" class="text-slate-300">Step Height Step</label>
+                        <span id="ampScaleVal" class="text-cyan-400 font-mono">12px</span>
+                    </div>
+                    <input type="range" id="amplitudeScale" min="4" max="30" step="2" value="12" class="w-full accent-cyan-500 bg-slate-800 rounded-lg h-2 cursor-pointer">
+                </div>
+
+                <!-- Glitch Threshold Sensitivity -->
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between text-xs font-medium">
+                        <label for="glitchSensitivity" class="text-slate-300" title="Time window within which opposite scroll events trigger a glitch flag">Glitch Window (ms)</label>
+                        <span id="glitchSensVal" class="text-cyan-400 font-mono">180ms</span>
+                    </div>
+                    <input type="range" id="glitchSensitivity" min="50" max="400" step="10" value="180" class="w-full accent-cyan-500 bg-slate-800 rounded-lg h-2 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- How it Works / Instructions -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
+                <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                    <i data-lucide="help-circle" class="w-4 h-4 text-cyan-400"></i>
+                    How to Test
+                </h3>
+                <ol class="text-xs text-slate-300 space-y-2 list-decimal list-inside">
+                    <li class="leading-relaxed">Place your cursor anywhere on the webpage.</li>
+                    <li class="leading-relaxed"><strong class="text-cyan-400">Scroll continuously</strong> in a single direction (e.g. fast Downwards).</li>
+                    <li class="leading-relaxed">Observe the plot color. Smooth scrolling produces a single color (<span class="text-indigo-400 font-medium">Down</span> or <span class="text-emerald-400 font-medium">Up</span>).</li>
+                    <li class="leading-relaxed">If bright <span class="text-rose-400 font-bold">Red / Orange</span> spikes appear during continuous single-direction scrolling, your mouse encoder is registering hardware glitches.</li>
+                </ol>
+            </div>
+
+            <!-- Live Event Log -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col flex-1 min-h-[250px]">
+                <div class="px-4 py-3 border-b border-slate-800 bg-slate-950/50 flex items-center justify-between">
+                    <h3 class="text-xs font-semibold text-white flex items-center gap-2">
+                        <i data-lucide="terminal" class="w-3.5 h-3.5 text-cyan-400"></i>
+                        Live Event Log
+                    </h3>
+                    <button id="clearLogBtn" class="text-[11px] text-slate-400 hover:text-slate-200">Clear</button>
+                </div>
+
+                <div id="eventLog" class="p-3 font-mono text-[11px] flex-1 overflow-y-auto space-y-1 max-h-[280px]">
+                    <div class="text-slate-500 italic">Listening for scroll events...</div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Detailed Explanation Footer Section -->
+    <footer class="mt-auto border-t border-slate-800 bg-slate-900/50 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-xs text-slate-400 space-y-4">
+            <h2 class="text-sm font-semibold text-slate-200">Cara Kerja Web Ini (How This Tool Works)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-slate-300">
+                <div>
+                    <h3 class="font-semibold text-cyan-400 mb-1">1. Streamer / Waterfall Visualization</h3>
+                    <p class="leading-relaxed">
+                        Aplikasi ini menangkap event JavaScript modern <code>WheelEvent</code> secara real-time. 
+                        Setiap kali mouse mengirimkan input scroll, kanvas menggambar garis vertikal yang merepresentasikan 
+                        besaran perubahan gerak (<code>deltaY</code>). Posisi horizontal bergeser ke kanan untuk setiap step, 
+                        menciptakan grafik continuous "waterfall/oscilloscope".
+                    </p>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-cyan-400 mb-1">2. Hardware Anomaly & Glitch Detection</h3>
+                    <p class="leading-relaxed">
+                        Mouse encoder yang rusak/aus sering mengalami masalah <i>encoder bounce</i> atau <i>chatter</i>, 
+                        di mana scroll ke bawah secara tiba-tiba mengirimkan 1 pulsa sinyal scroll ke atas. 
+                        Sistem mendeteksi hal ini dengan melacak tren arah scroll terakhir dalam rentang waktu singkat (misal: 180ms). 
+                        Jika ada sinyal berlawanan yang muncul secara mendadak saat scroll cepat, event tersebut ditandai sebagai <b>Glitch (Warna Merah Vivid)</b>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Application State
+        const state = {
+            totalSteps: 0,
+            upSteps: 0,
+            downSteps: 0,
+            glitchSteps: 0,
+            
+            // Visualization Settings
+            stepWidth: 8,
+            glitchTimeThresholdMs: 180,
+            stepHeight: 12,
+
+            // Plot State - Staircase Position
+            xPos: 0,
+            yPos: 0, // Cumulative vertical Y position
+            lastDirection: 0, // 1 for UP (negative deltaY), -1 for DOWN (positive deltaY)
+            lastScrollTime: 0,
+            scrollTimeout: null,
+            
+            // Buffer of recent events for direction momentum analysis
+            recentEvents: [] 
+        };
+
+        // DOM Elements
+        const canvas = document.getElementById('streamerCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasContainer = document.getElementById('canvasContainer');
+        const overlay = document.getElementById('canvasOverlay');
+        const scrollingIndicator = document.getElementById('scrollingIndicator');
+
+        // Stats Elements
+        const totalStepsEl = document.getElementById('totalStepsCount');
+        const upCountEl = document.getElementById('upCount');
+        const downCountEl = document.getElementById('downCount');
+        const glitchCountEl = document.getElementById('glitchCount');
+        const glitchRatioEl = document.getElementById('glitchRatio');
+        const glitchCard = document.getElementById('glitchCard');
+        const glitchBanner = document.getElementById('glitchBanner');
+        const dismissBannerBtn = document.getElementById('dismissBanner');
+
+        // Controls Elements
+        const stepWidthInput = document.getElementById('stepWidth');
+        const stepWidthVal = document.getElementById('stepWidthVal');
+        const glitchSensInput = document.getElementById('glitchSensitivity');
+        const glitchSensVal = document.getElementById('glitchSensVal');
+        const ampScaleInput = document.getElementById('amplitudeScale');
+        const ampScaleVal = document.getElementById('ampScaleVal');
+
+        // Buttons & Output
+        const resetStatsBtn = document.getElementById('resetStatsBtn');
+        const clearCanvasBtn = document.getElementById('clearCanvasBtn');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const eventLog = document.getElementById('eventLog');
+        const canvasDimensionsEl = document.getElementById('canvasDimensions');
+        const lastDeltaInfoEl = document.getElementById('lastDeltaInfo');
+
+        // Canvas Setup & Resize Handler
+        function resizeCanvas() {
+            const rect = canvasContainer.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            // Reset Y position to center if initial
+            if (state.yPos === 0) {
+                state.yPos = (rect.height / 2);
+            }
+
+            drawGrid();
+            updateDimensionLabel();
+        }
+
+        function updateDimensionLabel() {
+            const rect = canvasContainer.getBoundingClientRect();
+            canvasDimensionsEl.textContent = `Width: ${Math.round(rect.width)}px | Pos X: ${Math.round(state.xPos)} | Pos Y: ${Math.round(state.yPos)}`;
+        }
+
+        function drawGrid() {
+            const width = canvas.width / (window.devicePixelRatio || 1);
+            const height = canvas.height / (window.devicePixelRatio || 1);
+            const centerY = height / 2;
+
+            // Dark background similar to image
+            ctx.fillStyle = '#121214'; 
+            ctx.fillRect(0, 0, width, height);
+
+            // Subtle Baseline Guide Lines
+            ctx.strokeStyle = '#222228';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.stroke();
+
+            // Grid lines
+            const gridSpacing = 30;
+            for (let y = gridSpacing; y < height; y += gridSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+        }
+
+        // Clear Canvas Action
+        function clearCanvas() {
+            const height = canvas.height / (window.devicePixelRatio || 1);
+            state.xPos = 0;
+            state.yPos = height / 2;
+            drawGrid();
+            updateDimensionLabel();
+        }
+
+        // Reset Statistics Action
+        function resetStats() {
+            state.totalSteps = 0;
+            state.upSteps = 0;
+            state.downSteps = 0;
+            state.glitchSteps = 0;
+            state.recentEvents = [];
+            state.lastDirection = 0;
+
+            updateStatsUI();
+            glitchBanner.classList.add('hidden');
+            eventLog.innerHTML = '<div class="text-slate-500 italic">Log reset. Waiting for scroll...</div>';
+            clearCanvas();
+        }
+
+        function updateStatsUI() {
+            totalStepsEl.textContent = state.totalSteps.toLocaleString();
+            upCountEl.textContent = state.upSteps.toLocaleString();
+            downCountEl.textContent = state.downSteps.toLocaleString();
+            glitchCountEl.textContent = state.glitchSteps.toLocaleString();
+
+            const ratio = state.totalSteps > 0 ? ((state.glitchSteps / state.totalSteps) * 100).toFixed(1) : '0.0';
+            glitchRatioEl.textContent = `${ratio}%`;
+
+            if (state.glitchSteps > 0) {
+                glitchCard.classList.remove('border-rose-950/50');
+                glitchCard.classList.add('border-rose-500/80', 'bg-rose-950/20');
+            } else {
+                glitchCard.classList.add('border-rose-950/50');
+                glitchCard.classList.remove('border-rose-500/80', 'bg-rose-950/20');
+            }
+        }
+
+        // Scroll Event Processing & Anomaly Algorithm
+        function handleWheelEvent(e) {
+            e.preventDefault();
+
+            if (!overlay.classList.contains('opacity-0')) {
+                overlay.classList.add('opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+
+            scrollingIndicator.classList.remove('hidden');
+            clearTimeout(state.scrollTimeout);
+            state.scrollTimeout = setTimeout(() => {
+                scrollingIndicator.classList.add('hidden');
+            }, 400);
+
+            const now = performance.now();
+            const rawDelta = e.deltaY;
+            
+            if (rawDelta === 0) return;
+            // 1 for SCROLL UP, -1 for SCROLL DOWN
+            const currentDir = rawDelta < 0 ? 1 : -1;
+
+            state.recentEvents = state.recentEvents.filter(ev => (now - ev.time) < state.glitchTimeThresholdMs);
+            
+            let isGlitch = false;
+
+            if (state.recentEvents.length >= 2) {
+                const upCount = state.recentEvents.filter(ev => ev.dir === 1).length;
+                const downCount = state.recentEvents.filter(ev => ev.dir === -1).length;
+                
+                if (upCount >= 2 && currentDir === -1) {
+                    isGlitch = true;
+                } else if (downCount >= 2 && currentDir === 1) {
+                    isGlitch = true;
+                }
+            }
+
+            state.recentEvents.push({ dir: currentDir, time: now });
+
+            state.totalSteps++;
+            if (isGlitch) {
+                state.glitchSteps++;
+                glitchBanner.classList.remove('hidden');
+            }
+            if (currentDir === 1) {
+                state.upSteps++;
+            } else {
+                state.downSteps++;
+            }
+
+            state.lastDirection = currentDir;
+            state.lastScrollTime = now;
+
+            // Plot Event on Canvas using Staircase Step Logic
+            plotStaircaseStep(currentDir, isGlitch);
+
+            updateStatsUI();
+            logEvent(rawDelta, currentDir, isGlitch);
+            lastDeltaInfoEl.textContent = `Last DeltaY: ${rawDelta.toFixed(1)}`;
+        }
+
+        // Render Staircase Waveform on Canvas
+        function plotStaircaseStep(dir, isGlitch) {
+            const width = canvas.width / (window.devicePixelRatio || 1);
+            const height = canvas.height / (window.devicePixelRatio || 1);
+
+            const dx = state.stepWidth;
+            // Up scroll decreases Y (goes UP canvas), Down scroll increases Y (goes DOWN canvas)
+            const dy = (dir === 1 ? -1 : 1) * state.stepHeight;
+
+            const prevX = state.xPos;
+            const prevY = state.yPos;
+
+            let nextX = prevX + dx;
+            let nextY = prevY + dy;
+
+            // Wrap Y boundaries cleanly if it reaches top/bottom edges
+            if (nextY < 10) nextY = height - 20;
+            if (nextY > height - 10) nextY = 20;
+
+            // Wrap X boundary when reaching canvas right side
+            if (nextX >= width) {
+                state.xPos = 0;
+                nextX = dx;
+                // Clear area ahead for seamless restart
+                ctx.fillStyle = '#121214';
+                ctx.fillRect(0, 0, dx * 4, height);
+            } else {
+                // Clear small rectangle ahead to wipe previous pass trail
+                ctx.fillStyle = '#121214';
+                ctx.fillRect(nextX, 0, dx * 3, height);
+            }
+
+            // Determine Stair Colors matching reference style:
+            // UP = Green (#00802b / #00ff55)
+            // DOWN = Dark Red / Maroon (#660000 / #ff1a1a)
+            // GLITCH = Bright Orange/Red Warning
+            let strokeColor, glowColor;
+
+            if (isGlitch) {
+                strokeColor = '#ff3300';
+                glowColor = '#ff6600';
+            } else if (dir === 1) {
+                strokeColor = '#00aa3b';
+                glowColor = '#00ff55';
+            } else {
+                strokeColor = '#880000';
+                glowColor = '#ff2222';
+            }
+
+            // Draw Staircase Step (Vertical Shift -> Horizontal Step)
+            ctx.save();
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'square';
+            ctx.lineJoin = 'miter';
+            ctx.strokeStyle = strokeColor;
+
+            ctx.beginPath();
+            // Start from previous point
+            ctx.moveTo(prevX, prevY);
+            // Vertical leg (Y shift)
+            ctx.lineTo(prevX, nextY);
+            // Horizontal leg (X step forward)
+            ctx.lineTo(nextX, nextY);
+            ctx.stroke();
+
+            // Add highlight glow for Glitches
+            if (isGlitch) {
+                ctx.strokeStyle = glowColor;
+                ctx.lineWidth = 6;
+                ctx.globalAlpha = 0.6;
+                ctx.stroke();
+            }
+
+            ctx.restore();
+
+            // Update positions
+            state.xPos = nextX;
+            state.yPos = nextY;
+
+            updateDimensionLabel();
+        }
+
+        // Add Entry to Real-time Console Log
+        function logEvent(delta, dir, isGlitch) {
+            const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+            const dirLabel = dir === 1 ? 'UP' : 'DOWN';
+            
+            let colorClass = dir === 1 ? 'text-emerald-400' : 'text-rose-400';
+            let extraTag = '';
+
+            if (isGlitch) {
+                colorClass = 'text-amber-400 font-bold';
+                extraTag = '<span class="px-1 bg-amber-500/20 text-amber-300 rounded border border-amber-500/40 text-[9px] ml-1">GLITCH</span>';
+            }
+
+            const entry = document.createElement('div');
+            entry.className = 'flex items-center justify-between border-b border-slate-800/40 py-0.5';
+            entry.innerHTML = `
+                <span class="text-slate-500">${timeStr}</span>
+                <span class="${colorClass} flex items-center">${dirLabel} (${delta.toFixed(0)}) ${extraTag}</span>
+            `;
+
+            if (eventLog.children.length === 1 && eventLog.children[0].classList.contains('italic')) {
+                eventLog.innerHTML = '';
+            }
+
+            eventLog.appendChild(entry);
+            
+            if (eventLog.children.length > 100) {
+                eventLog.removeChild(eventLog.firstChild);
+            }
+
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+
+        // Event Listeners for UI Controls
+        stepWidthInput.addEventListener('input', (e) => {
+            state.stepWidth = parseInt(e.target.value, 10);
+            stepWidthVal.textContent = `${state.stepWidth}px`;
+        });
+
+        glitchSensInput.addEventListener('input', (e) => {
+            state.glitchTimeThresholdMs = parseInt(e.target.value, 10);
+            glitchSensVal.textContent = `${state.glitchTimeThresholdMs}ms`;
+        });
+
+        ampScaleInput.addEventListener('input', (e) => {
+            state.stepHeight = parseInt(e.target.value, 10);
+            ampScaleVal.textContent = `${state.stepHeight}px`;
+        });
+
+        resetStatsBtn.addEventListener('click', resetStats);
+        clearCanvasBtn.addEventListener('click', clearCanvas);
+        clearLogBtn.addEventListener('click', () => {
+            eventLog.innerHTML = '<div class="text-slate-500 italic">Log cleared.</div>';
+        });
+
+        dismissBannerBtn.addEventListener('click', () => {
+            glitchBanner.classList.add('hidden');
+        });
+
+        // Window Mouse Wheel Event Listener
+        window.addEventListener('wheel', handleWheelEvent, { passive: false });
+
+        // Window Resize Handler
+        window.addEventListener('resize', resizeCanvas);
+
+        // Initial setup on Window Load
+        window.onload = function() {
+            resizeCanvas();
+        };
+    </script>
+</body>
+</html>
